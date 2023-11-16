@@ -1,0 +1,143 @@
+﻿@page "/fetchdata"
+
+@using pasotracker.Data
+@inject HorseService ForecastService
+@using System.Linq.Dynamic.Core
+
+<h1>Horse Details</h1>
+
+<p>This component demonstrates fetching data from a Static service.</p>
+
+@if (horseDBDetails == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    @*<table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Temp. (C)</th>
+                <th>Temp. (F)</th>
+                <th>Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var forecast in forecasts)
+            {
+                <tr>
+                    <td>@forecast.Date.ToShortDateString()</td>
+                    <td>@forecast.TemperatureC</td>
+                    <td>@forecast.TemperatureF</td>
+                    <td>@forecast.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>*@
+
+    <RadzenDataGrid @bind-Value=@selectedItems Data="@data" TItem="IDictionary<string, object>" ColumnWidth="200px"
+                    AllowFiltering="true" FilterPopupRenderMode="PopupRenderMode.OnDemand" FilterMode="FilterMode.Advanced" AllowPaging="true" AllowSorting="true">
+        <Columns>
+            @foreach (var column in columns)
+            {
+                <RadzenDataGridColumn TItem="IDictionary<string, object>" Title="@column.Key" Type="column.Value"
+                                      Property="@GetColumnPropertyExpression(column.Key, column.Value)">
+                    <Template>
+                        @context[@column.Key]
+                    </Template>
+                </RadzenDataGridColumn>
+            }
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+
+    IList<IDictionary<string, object>> selectedItems;
+
+    public IEnumerable<IDictionary<string, object>> data { get; set; }
+
+    public IDictionary<string, Type> columns { get; set; }
+
+    private HorseCast[] forecasts;
+
+    private HorseDBDetails[] horseDBDetails;
+
+    public string GetColumnPropertyExpression(string name, Type type)
+    {
+        var expression = $@"it[""{name}""].ToString()";
+
+        if (type == typeof(int))
+        {
+            return $"int.Parse({expression})";
+        }
+        else if (type == typeof(DateTime))
+        {
+            return $"DateTime.Parse({expression})";
+        }
+
+        return expression;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        forecasts = await ForecastService.GetForecastAsync(DateTime.Now);
+        horseDBDetails = await ForecastService.GetHorseDetailsAsync();
+
+        columns = new Dictionary<string, Type>()
+{
+            { "Reg#", typeof(string) },
+            { "Horse Name", typeof(string) },
+            { "DOB", typeof(string) },
+            { "Age", typeof(string) },
+            { "Owner Name", typeof(string) },
+            { "Origin", typeof(string) },
+            { "Other Details", typeof(string) }
+    };
+
+        data = Enumerable.Range(0, horseDBDetails.Count()).Select(i =>
+        {
+            var row = new Dictionary<string, object>();
+
+            foreach (var column in columns)
+            {
+                if (column.Key == "Reg#")
+                {
+                    row.Add(column.Key, horseDBDetails[i].Registration);
+                }
+                else if (column.Key == "Horse Name")
+                {
+                    row.Add(column.Key, horseDBDetails[i].HorseName);
+                }
+                else if (column.Key == "DOB")
+                {
+                    row.Add(column.Key, horseDBDetails[i].DOB);
+                }
+                else if (column.Key == "Age")
+                {
+                    row.Add(column.Key, horseDBDetails[i].Age);
+                }
+                else if (column.Key == "Owner Name")
+                {
+                    row.Add(column.Key, horseDBDetails[i].OwnerName);
+                }
+                else if (column.Key == "Origin")
+                {
+                    row.Add(column.Key, horseDBDetails[i].Origin);
+                }
+                else if (column.Key == "Other Details")
+                {
+                    row.Add(column.Key, horseDBDetails[i].OtherDetails);
+                }
+                else
+                {
+                    row.Add(column.Key, horseDBDetails[i].HorseName);
+
+                }
+            }
+
+            return row;
+        });
+    }
+}
